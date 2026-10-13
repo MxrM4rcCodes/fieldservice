@@ -1,0 +1,4 @@
+import { NextResponse } from "next/server";
+import { run, one } from "@/lib/db";
+import { requireUser } from "@/lib/auth";
+export async function PUT(req: Request) { const u = await requireUser(); const { interviewDate, track, name } = await req.json().catch(() => ({})); if (track && !["course14", "bootcamp3"].includes(track)) return NextResponse.json({ error: "Invalid track" }, { status: 400 }); if (interviewDate && !/^\d{4}-\d{2}-\d{2}$/.test(interviewDate)) return NextResponse.json({ error: "interviewDate must be YYYY-MM-DD" }, { status: 400 }); await run("UPDATE users SET interview_date=?,track=?,name=? WHERE id=?", [interviewDate || u.interview_date, track || u.track, (name || u.name).toString().slice(0, 80), u.id]); return NextResponse.json(await one("SELECT id,email,name,role,interview_date,track FROM users WHERE id=?", [u.id])); }
