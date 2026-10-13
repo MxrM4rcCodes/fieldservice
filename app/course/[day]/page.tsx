@@ -1,0 +1,37 @@
+"use client";
+import { useEffect, useState } from "react"; import { useParams } from "next/navigation"; import Link from "next/link";
+export default function LessonPage() {
+ const { day: slug } = useParams<{ day: string }>(); const [l, setL] = useState<any>(null);
+ const [answers, setAnswers] = useState<number[]>([]); const [result, setResult] = useState<any>(null);
+ const [note, setNote] = useState(""); const [msg, setMsg] = useState(""); const [notes, setNotes] = useState<any[]>([]);
+ const PRACTICE: Record<number, [string, string][]> = { 1:[["Open the Systems Map","/systems-map"],["Draft your introduction in Interview Studio","/interview"]],2:[["Explore the Systems Map pathways","/systems-map"]],3:[["Run Scenario 10 (unsafe condition)","/simulator"]],4:[["Open the Printer Anatomy Lab","/printer-lab"]],5:[["Try Trace the Fault: banding","/printer-lab"],["Scenario 1: nozzle banding","/simulator"]],6:[["Scenario 4: job stuck in RIP","/simulator"],["Scenario 9: network interruption","/simulator"]],7:[["Open the Color Science Lab","/color-lab"]],8:[["ORIS Product Explorer matching exercise","/oris"]],9:[["METIS Imaging Lab split-test","/metis"],["Scenario 6: scan artifacts","/simulator"]],10:[["Print the installation checklist","/print"],["Service Documentation Lab","/tickets"]],11:[["Scenario 8: recurring fault","/simulator"]],12:[["Complete a ticket in the Documentation Lab","/tickets"]],13:[["Practice in Interview Studio","/interview"]],14:[["Run the Mock Interview","/interview"],["Review Flashcards: difficult terms","/flashcards"]] };
+ function load() { fetch(`/api/lessons/${slug}`).then(r=>r.json()).then(j=>{ setL(j); setAnswers(new Array(j.questions?.length||0).fill(-1)); }); fetch(`/api/notes?lessonSlug=${slug}`).then(r=>r.json()).then(setNotes); }
+ useEffect(load, [slug]);
+ async function mark(pct: number) { await fetch("/api/progress", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ lessonSlug: slug, percent: pct }) }); setMsg(pct>=100?"Marked complete — saved to your account.":"Reading progress saved."); load(); }
+ async function submitQuiz() { if (answers.some(a=>a<0)) return setMsg("Answer every question first — explanations appear after grading."); const res = await fetch("/api/quiz", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ lessonSlug: slug, answers }) }); const j = await res.json(); if (!res.ok) return setMsg(j.error||"Quiz failed"); setResult(j); load(); }
+ async function saveNote() { if (!note.trim()) return; const res = await fetch("/api/notes", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ body: note, lessonSlug: slug }) }); if (res.ok) { setNote(""); setMsg("Note saved to your account."); fetch(`/api/notes?lessonSlug=${slug}`).then(r=>r.json()).then(setNotes); } }
+ if (!l) return <p>Loading lesson…</p>; if (l.error) return <p role="alert">{l.error}</p>;
+ return (<article>
+  <p className="small"><Link href="/course">← 14-Day Course</Link> · Day {l.day} of 14 · ≈{l.minutes} minutes · {l.competency} · Progress: {l.progress.status} ({l.progress.percent}%)</p>
+  <h1 style={{marginBottom:6}}>{l.title}</h1><p className="muted">{l.summary}</p>
+  <section className="card" style={{padding:16}}><h2 style={{marginTop:0}}>Objectives & prerequisites</h2><ul>{l.objectives.map((o:string)=><li key={o}>{o}</li>)}</ul><p className="small muted">Prerequisites: {l.prerequisites}</p></section>
+  {l.blocks.map((b:any,i:number)=>(<section key={i} className="card" style={{padding:16,marginTop:12}}><h2 style={{marginTop:0}}>{i+1}. {b.heading}</h2><p style={{lineHeight:1.65}}>{b.body}</p></section>))}
+  <section className="card" style={{padding:16,marginTop:12,borderColor:"#F5B544"}}><h2 style={{marginTop:0}}>Field example</h2><p style={{lineHeight:1.65}}>{l.field_example}</p></section>
+  <section className="card" style={{padding:16,marginTop:12}}><h2 style={{marginTop:0}}>Interactive practice</h2>{(PRACTICE[l.day]||[]).map(([t,h])=><p key={h}><Link className="btn2" href={h}>{t} →</Link></p>)}<p className="small muted">Vocabulary for this course lives in <Link href="/flashcards">Flashcards & Glossary</Link> (66 terms, mastery tracked to your account).</p></section>
+  <section className="card" style={{padding:16,marginTop:12}}><h2 style={{marginTop:0}}>My notes for this lesson</h2>
+   <textarea className="input" rows={3} value={note} onChange={e=>setNote(e.target.value)} placeholder="Write a note — saved to your account, visible on your Dashboard." aria-label="Lesson note"/><p><button className="btn2" onClick={saveNote}>Save note</button> <button className="btn2" onClick={()=>mark(50)}>Save reading progress (50%)</button> <button className="btn2" onClick={()=>mark(100)}>Mark lesson complete</button></p>
+   {notes.map(n=><p key={n.id} className="small" style={{borderLeft:"3px solid #2DD4BF",paddingLeft:8}}>{n.body} <span className="muted">· {new Date(n.created_at).toLocaleString()}</span></p>)}</section>
+  <section className="card" style={{padding:16,marginTop:12}} aria-label="Knowledge check"><h2 style={{marginTop:0}}>Knowledge check <span className="small muted">(graded on the server; explanations after submission)</span></h2>
+   {l.questions.map((qq:any,qi:number)=>(<fieldset key={qq.id} style={{border:"1px solid #22314D",borderRadius:10,marginBottom:12}}><legend><strong>Q{qi+1}.</strong> {qq.prompt}</legend>
+    {qq.choices.map((c:string,ci:number)=>(<label key={ci} style={{display:"block",padding:"4px 0"}}><input type="radio" name={`q${qi}`} checked={answers[qi]===ci} onChange={()=>{const a=[...answers];a[qi]=ci;setAnswers(a);}}/> {c}</label>))}
+    {result && (()=>{ const d=result.detail[qi]; return (<div className="small" style={{marginTop:6,borderTop:"1px dashed #2C4066",paddingTop:6}}><p style={{color:d.correct?"#3ECF8E":"#FF8A8A",margin:"2px 0"}}>{d.correct?"✓ Correct":"✗ Incorrect — correct answer: "+d.choices[d.answer]}</p><p style={{margin:"2px 0"}}>{d.explanation}</p><p className="muted" style={{margin:"2px 0"}}>Targeted review: {d.reviewHint}</p></div>); })()}
+   </fieldset>))}
+   <button className="btn" onClick={submitQuiz}>Submit knowledge check</button>
+   {result && <p role="status"><strong>Score: {result.score}/{result.total}</strong> {result.passed?"— passed. Lesson marked complete.":"— below 60%. Use the targeted review hints above, re-read, and retry."} {result.score<result.total && <> Recommended review: re-open the sections named in the hints, then try the <Link href="/flashcards">flashcards</Link> for this competency.</>}</p>}
+   {l.attempts?.length>0 && <p className="small muted">Previous attempts: {l.attempts.map((a:any)=>`${a.score}/${a.total} (${new Date(a.created_at).toLocaleDateString()})`).join(" · ")}</p>}
+  </section>
+  <section className="card" style={{padding:16,marginTop:12}}><h2 style={{marginTop:0}}>Summary & review</h2><p style={{lineHeight:1.65}}>{l.summary_review}</p>
+   <p className="small"><strong>Printable reference:</strong> <Link href="/print">open this day's reference sheet in the Print Center</Link> (browser printing; no fake PDF generator).</p>
+   <h3>Sources & confidence</h3><p className="small muted">{l.sources}</p><p className="small"><strong>Confidence:</strong> {l.confidence}</p>
+   <p>{slug && <Link className="btn" href="/course">Back to course</Link>}</p>{msg && <p role="status" style={{color:"#3ECF8E"}}>{msg}</p>}</section>
+ </article>); }

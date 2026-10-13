@@ -1,0 +1,12 @@
+@tailwind base; @tailwind components; @tailwind utilities;
+:root{color-scheme:dark}
+body{background:#0B1220;color:#F2F6FC;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+:focus-visible{outline:3px solid #2DD4BF;outline-offset:2px}
+.card{background:#111C30;border:1px solid #22314D;border-radius:14px}
+.btn{background:#2DD4BF;color:#06231F;font-weight:700;border-radius:10px;padding:.55rem 1rem}
+.btn:hover{filter:brightness(1.1)} .btn:disabled{opacity:.5}
+.btn2{background:#1B2A44;color:#F2F6FC;border:1px solid #2C4066;font-weight:600;border-radius:10px;padding:.55rem 1rem}
+.input{background:#0B1220;border:1px solid #2C4066;border-radius:10px;padding:.55rem .7rem;width:100%;color:#F2F6FC}
+a{color:#7DD3FC} .muted{color:#A9BAD3} .small{font-size:.85rem}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+@media print{ body{background:#fff;color:#000} .no-print{display:none!important} .card{border:1px solid #999;background:#fff;color:#000} a{color:#000} .print-dark{color:#000!important} main{padding:0!important} }
